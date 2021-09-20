@@ -74,10 +74,10 @@ void loop() {
     int i;
     for(i=x.length();i<16;i++){
       lcd.setCursor(i, 0);
-      lcd.write(byte(0));
+      lcd.write(" ");
     }    
     for(i=0;i<17;i++){
-       lcd.write(byte(0));
+       lcd.write(" ");
        lcd.setCursor(i,1);
     }
   }
