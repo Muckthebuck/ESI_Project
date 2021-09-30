@@ -17,7 +17,6 @@ unsigned long am_prev_time = 0;
 int pir_status = 0;
 int reminder_timer = 0;
 int reminder_count = 0;
-int reminder_subcount = 0;
 int reminder_hour = 100; //Set to 100 so we can reassign on startup
 int butt;
 int i=0;
@@ -58,8 +57,8 @@ void check_inputs() {
   butt = analogRead(0);
 
   // Fix issue with buttons - Mukul? 
-  left_button = analogRead(1);
-  right_button = analogRead(2);
+  //left_button = analogRead(1);
+  //right_button = analogRead(2);
 
   // Sets the button_num from 1-5 (Uses lcd shield buttons)
   if (butt < 60) {
@@ -120,23 +119,29 @@ void action_manager() {
   Serial.print("count:");
   Serial.print(reminder_count);
   Serial.print(",subcount:");
-  Serial.print(reminder_subcount);
+  Serial.print(reminder_timer);
   Serial.print(",hour of reminder:");
   Serial.println(reminder_hour);
 
+  // If the left button has been pressed
+  // and we are not studying or in a break period
   if (left_button && study_status==0 && break_time == 0) {
+    // set timer to 25 mins
     if (set_timer == 0) {
       i=5;
       set_timer = 1;
     }
+    // Initialise study phase
     study_loading = 1;
 
+    // If right button pressed, stop initialising
     if (right_button) {
       left_button = 0;
       right_button = 0;
       set_timer = 0;
     }
 
+    // Countdown the initialisation timer
     if (i >= 0) {
      lcd.clear();
      lcd.setCursor(0,0);
@@ -149,11 +154,14 @@ void action_manager() {
      lcd.print(i);
      i = i - 1;
     }
-     
+
+     // Timer finished -> study mode
     if (i == -1) {
+      // Turn off left button press & put into study mode
       left_button = 0;
       study_loading = 0;
       study_status = 1;
+      // 
       study_pomo = 1;
       set_timer = 0;
       Serial.println("In study mode now");
@@ -168,7 +176,10 @@ void action_manager() {
       lcd.print(":");
       print02(myRTC.minutes); 
     }
-  } else if (!(break_time == 1 && pomodoro_timer == 0)) {
+  } // Else if i haven't pressed the left button and 
+  // it is not break time pomodoro timer isn't 0
+  // check to see if i'm ready to study - PIR sensor activated
+  else if (!(break_time == 1 && pomodoro_timer == 0)) {
     // Say the day of the week
     lcd.setCursor(0,0);
     print_DoW(myRTC.dayofweek);
@@ -187,43 +198,67 @@ void action_manager() {
     }
   
     // Ask if I'm ready to study yet
+    // If sensor has activated or i'm in the 5 second reminder period
+    // and additional conditions
     if ((pir_status == HIGH || reminder_timer > 0) && reminder_count <= 7 && study_status == 0 && break_time == 0) {            
+      
+      // Ask if I want to study (using the timer)
       lcd.setCursor(0,1);
       lcd.print("Study? L(Y):R(N)");
+      
+      // Set countdown timer to 5
+      // Only gets sets to 0 when a new reminder commences 
       if (reminder_timer == 0) {
         reminder_timer = 5;
-      }
-      reminder_timer = reminder_timer - 1;
-      reminder_subcount = reminder_subcount + 1;
-  
-      if (reminder_subcount == 5) {
         reminder_count = reminder_count + 1;
-        reminder_subcount = 0;
       }
+      
+      // iterate
+      reminder_timer = reminder_timer - 1;
     }
   }
 
+
+  // Not sure why I added this ? ....
   if (right_button) {
     right_button = 0;
   }
 
+  // after elapsing the initialisation timer, study status = 1
   if (study_status == 1) {
+
+    // pomodoro_timer for the countdown, study_pomo for the
+    // study state
+
+    // If the timer is 0, and we are in study_pomo (to indicate
+    // it is the first time we are starting this timer) 
     if (pomodoro_timer == 0 && study_pomo == 1) {
       pomodoro_timer = 5; //  change to 15 mins
-      study_pomo = 0;
-    } else if (pomodoro_timer == 0) {
+      study_pomo = 0; // not the first time anymore
+    } 
+    // if we have elapsed 25 mins
+    else if (pomodoro_timer == 0) {
+      // Go into break mode 
       break_time = 1;
+      // First time indicator function like study_pomo
       study_break = 1;
+      // Not studying anymore
       study_status = 0;
-    }
+    } 
+    
+    // update timer
+    pomo_mins = pomodoro_timer/60;
+    pomo_secs = pomodoro_timer%60;
+    
+    // Print on the screen how long we have
     lcd.setCursor(0, 1);
     lcd.print("Timer:");
     lcd.setCursor(10, 1);
-    pomo_mins = pomodoro_timer/60;
-    pomo_secs = pomodoro_timer%60;
-    print02(pomo_mins);
+    print02(pomo_mins); // with leading 0's
     lcd.print(":");
     print02(pomo_secs);
+
+    //iterate 
     if (pomodoro_timer > 0) {
       pomodoro_timer = pomodoro_timer - 1;
     }
@@ -232,13 +267,20 @@ void action_manager() {
   if (break_time == 1) {
     if (pomodoro_timer == 0 && study_break == 1) {
       pomodoro_timer = 5; //change to 5 mins
-      study_break = 0;
-    } else if (pomodoro_timer == 0) {
+      study_break = 0; // not first time anymore
+    } 
+    // If we have run out of study break time
+    else if (pomodoro_timer == 0) {
       lcd.setCursor(0,0);
       lcd.print("Restart timer?");
       lcd.setCursor(7,1);
       lcd.print("L(Y):R(N)");
+
+      // Create function to put back into study mode
+      // or back to home screen depending on button press
     }
+
+    // Iterate and display on screen basically
     if (pomodoro_timer > 0) {
       Serial.print(pomodoro_timer);
       lcd.setCursor(0, 1);
