@@ -10,6 +10,7 @@ virtuabotixRTC myRTC(13, 12, 11);
 
 #define BL_LCD 10
 #define PIR_PIN 2
+#define ACTBZ_PIN 3
 
 ///////////////// Varibles /////////////////////
 const int am_interval = 1000;
@@ -26,6 +27,7 @@ int study_loading = 0;
 int pomodoro_timer = 0;
 int pomo_mins;
 int pomo_secs;
+int cancel_status = 0;
 int button_num; // 1 for SEL, 2 for LEFT, 3 for UP, 4 for DOWN
                 // 5 for RIGHT
 bool left_button = 0;
@@ -124,9 +126,11 @@ void action_manager() {
   Serial.println(reminder_hour);
 
   // If the left button has been pressed
-  // and we are not studying or in a break period
-  if (left_button && study_status==0 && break_time == 0) {
-    // set timer to 25 mins
+  // and we are not studying or in a break period AND if we are in study break
+  if (left_button && study_status==0 && break_time == 0 || left_button && break_time == 1) {
+    // For post break period, to go back into study mode when lftbtn is pressed
+    break_time = 0;
+    // set timer to 5 seconds
     if (set_timer == 0) {
       i=5;
       set_timer = 1;
@@ -218,12 +222,6 @@ void action_manager() {
     }
   }
 
-
-  // Not sure why I added this ? ....
-  if (right_button) {
-    right_button = 0;
-  }
-
   // after elapsing the initialisation timer, study status = 1
   if (study_status == 1) {
 
@@ -233,7 +231,7 @@ void action_manager() {
     // If the timer is 0, and we are in study_pomo (to indicate
     // it is the first time we are starting this timer) 
     if (pomodoro_timer == 0 && study_pomo == 1) {
-      pomodoro_timer = 5; //  change to 15 mins
+      pomodoro_timer = 15; //  change to 25 mins
       study_pomo = 0; // not the first time anymore
     } 
     // if we have elapsed 25 mins
@@ -245,6 +243,10 @@ void action_manager() {
       // Not studying anymore
       study_status = 0;
     } 
+
+    if (pomodoro_timer == 1){
+      tone(ACTBZ_PIN, 60,1000);
+    }
     
     // update timer
     pomo_mins = pomodoro_timer/60;
@@ -276,8 +278,11 @@ void action_manager() {
       lcd.setCursor(7,1);
       lcd.print("L(Y):R(N)");
 
-      // Create function to put back into study mode
-      // or back to home screen depending on button press
+      // Right button to go to home screen 
+      if (right_button) {
+        break_time = 0;
+        right_button = 0;
+      }
     }
 
     // Iterate and display on screen basically
@@ -293,6 +298,41 @@ void action_manager() {
       print02(pomo_secs);
       pomodoro_timer = pomodoro_timer - 1;  
     }  
+  }
+
+  // Not sure why I added this ? ....
+  // Added this to cancel the study modes at any time - add 5 second confirm? 
+  // If not confirmed, go back to study
+  // Also added this to stop the rght btn from being stuck 
+
+  // Fix sticky right_button issue
+  if (right_button || cancel_status) {
+    right_button = 0;
+    cancel_status = 1;
+    if (study_status = 1 && pomodoro_timer >= 5) {
+      lcd.clear();
+      int cancel_counter = 5;
+      lcd.setCursor(0,0);
+      lcd.print("End timer?: R(Y)");
+      lcd.setCursor(0,1);
+      lcd.print(cancel_counter);
+      lcd.print(" s to confirm");
+      cancel_counter = cancel_counter - 1;
+      
+      if (right_button && cancel_status) {
+        right_button = 0;
+        study_status = 0;
+        cancel_status = 0;
+        pomodoro_timer = 0;
+      } 
+
+      if (cancel_counter == -1) {
+        cancel_status = 0;        
+      }
+    }
+    if (right_button) {
+      right_button = 0;
+    }
   }
 }
 
