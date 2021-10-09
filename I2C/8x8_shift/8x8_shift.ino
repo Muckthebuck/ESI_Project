@@ -3,24 +3,24 @@
 #define STORE 4
 
 void store();
-int pic[] = {0,0,0,0,0,0,0,0};
+int pic[] = {0,36,36,36,0,66,60,0};
 
 void setup() {
   pinMode(DATA, OUTPUT);
   pinMode(SHIFT, OUTPUT);
   pinMode(STORE, OUTPUT);
-  
-//  shiftOut(DATA, SHIFT, MSBFIRST, 0);
-//  shiftOut(DATA, SHIFT, MSBFIRST, 255);
-//  store();
+  shiftOut(DATA, SHIFT, MSBFIRST, 0);
+  shiftOut(DATA, SHIFT, MSBFIRST, 255);
+  store();
 }
 
 void loop() {
-   shiftOut(DATA, SHIFT, LSBFIRST, 0);
-   shiftOut(DATA, SHIFT, LSBFIRST, 255);
-   store();
-
-//   for (int i=0; i<8; i++) {
+   shiftOut(DATA, SHIFT, MSBFIRST, 0);
+  shiftOut(DATA, SHIFT, MSBFIRST, 255);
+  store();
+//  for (int i=0; i<8; i++) {
+////     shiftOut(DATA, SHIFT, MSBFIRST, 0);
+////     shiftOut(DATA, SHIFT, MSBFIRST, 255);
 //    shiftOut(DATA, SHIFT, LSBFIRST, ~pic[i]);
 //    shiftOut(DATA, SHIFT, LSBFIRST, 128 >> i);
 //    store();
