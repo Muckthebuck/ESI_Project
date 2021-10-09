@@ -8,7 +8,6 @@
 
 const int LED = 13;
 String x = "";
-char data[16];
 char buff[16];
 int event;
 /*
