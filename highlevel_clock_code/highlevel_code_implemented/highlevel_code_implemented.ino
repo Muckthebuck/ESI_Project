@@ -14,6 +14,8 @@ virtuabotixRTC myRTC(13, 12, 11);
 
 ///////////////// Varibles /////////////////////
 const int am_interval = 1000;
+const int LEFT_BTN = 0; 
+const int RIGHT_BTN = 1; 
 unsigned long am_prev_time = 0;
 int pir_status = 0;
 int reminder_timer = 0;
@@ -27,7 +29,9 @@ int study_loading = 0;
 int pomodoro_timer = 0;
 int pomo_mins;
 int pomo_secs;
+int cancel_counter;
 int cancel_status = 0;
+int cancel_first_time = 0;
 int button_num; // 1 for SEL, 2 for LEFT, 3 for UP, 4 for DOWN
                 // 5 for RIGHT
 bool left_button = 0;
@@ -36,16 +40,23 @@ bool set_timer = 0;
 bool study_pomo = 0;
 bool study_break = 0;
 bool break_time = 0;
+int end_of_time_count;
 
 void setup() {
   // Serial and lcd screen initilisation 
   Serial.begin(9600);
   lcd.begin(16,2);
- 
+
+  // Pins for buttons that I wasn't able to implement - not sure why
+  pinMode(LEFT_BTN, INPUT);
+  pinMode(RIGHT_BTN, INPUT);
+
+  // Backlight and PIR sensor pins
   pinMode(BL_LCD, OUTPUT);
   pinMode(PIR_PIN, INPUT);
+  
   // Sets time time in sec, min, hour, day of week, day, mon, year
-  //myRTC.setDS1302Time(30, 00, 9, 2, 20, 9, 2021); 
+  //myRTC.setDS1302Time(00, 12, 15, 1, 10, 10, 2021); 
 }
 
 void loop() {
@@ -58,9 +69,8 @@ void check_inputs() {
   // Analog buttons 
   butt = analogRead(0);
 
-  // Fix issue with buttons - Mukul? 
-  //left_button = analogRead(1);
-  //right_button = analogRead(2);
+  //int right_state = digitalRead(RIGHT_BTN);
+  //int left_state = digitalRead(LEFT_BTN);
 
   // Sets the button_num from 1-5 (Uses lcd shield buttons)
   if (butt < 60) {
@@ -102,7 +112,7 @@ void action_manager() {
     Serial.println("Motion detected");
   } 
   
-  // Time of day function - brightness control
+  // Time of day function - backlight brightness control
   bl_lcd_control(myRTC.hours);
   
   // Serial print date elements / trouble shooting
@@ -125,9 +135,8 @@ void action_manager() {
   Serial.print(",hour of reminder:");
   Serial.println(reminder_hour);
 
-  // If the left button has been pressed
-  // and we are not studying or in a break period AND if we are in study break
-  if (left_button && study_status==0 && break_time == 0 || left_button && break_time == 1) {
+  // If the left button has been pressed AND we are not studying 
+  if (left_button && study_status==0) {
     // For post break period, to go back into study mode when lftbtn is pressed
     break_time = 0;
     // set timer to 5 seconds
@@ -243,7 +252,7 @@ void action_manager() {
       // Not studying anymore
       study_status = 0;
     } 
-
+    // Active buzzer on for one second to signal end of timer
     if (pomodoro_timer == 1){
       tone(ACTBZ_PIN, 60,1000);
     }
@@ -270,6 +279,7 @@ void action_manager() {
     if (pomodoro_timer == 0 && study_break == 1) {
       pomodoro_timer = 5; //change to 5 mins
       study_break = 0; // not first time anymore
+      end_of_time_count = 12;
     } 
     // If we have run out of study break time
     else if (pomodoro_timer == 0) {
@@ -283,6 +293,14 @@ void action_manager() {
         break_time = 0;
         right_button = 0;
       }
+
+      // auto cancel/restart function goes here
+      if (end_of_time_count == 0) {
+        end_of_time_count = 0;
+        break_time = 0;
+      }
+      // Auto stops the counter after specified period
+      end_of_time_count = end_of_time_count - 1;
     }
 
     // Iterate and display on screen basically
@@ -300,38 +318,47 @@ void action_manager() {
     }  
   }
 
-  // Not sure why I added this ? ....
-  // Added this to cancel the study modes at any time - add 5 second confirm? 
-  // If not confirmed, go back to study
-  // Also added this to stop the rght btn from being stuck 
-
-  // Fix sticky right_button issue
-  if (right_button || cancel_status) {
-    right_button = 0;
+  // If we are cancelling mid study/break then activate the cancel_status and first time
+  // variables - for initialising the timer
+  if (right_button && (study_status || break_time) && !cancel_status) {
     cancel_status = 1;
-    if (study_status = 1 && pomodoro_timer >= 5) {
+    cancel_first_time = 1;
+    right_button = 0;
+  }
+
+  // If we are cancelling the timer
+  if (cancel_status) {
+    // If we have at least 5 seconds or more left on our timer 
+    if (pomodoro_timer >= 5) {
       lcd.clear();
-      int cancel_counter = 5;
+
+      // If it is our first time, then set timer to 5
+      if (cancel_counter == 0 && cancel_first_time) {
+        cancel_counter = 5;
+        cancel_first_time = 0;
+      }
+
+      // Print on LCD
       lcd.setCursor(0,0);
       lcd.print("End timer?: R(Y)");
       lcd.setCursor(0,1);
       lcd.print(cancel_counter);
       lcd.print(" s to confirm");
       cancel_counter = cancel_counter - 1;
-      
+
+      // If I press R btn in 5 seconds, cancel the whole timer
       if (right_button && cancel_status) {
         right_button = 0;
         study_status = 0;
-        cancel_status = 0;
         pomodoro_timer = 0;
-      } 
-
-      if (cancel_counter == -1) {
-        cancel_status = 0;        
+        cancel_counter = 0;
       }
-    }
-    if (right_button) {
-      right_button = 0;
+
+      // If the timer ends, go back to whatever mode it was in
+      if (cancel_counter == -1) {
+        cancel_counter=0;
+        cancel_status = 0;
+      }
     }
   }
 }
