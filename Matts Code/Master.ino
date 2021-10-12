@@ -209,8 +209,9 @@ void action_manager(){
   if(state==STANDBY){
     if (third_btn){
       ready_to_study();
+    } else {
+      LCD_print(get_day_and_time(),random_string());
     }
-    LCD_print(get_day_and_time(),random_string());
   }
   
   if(state==IN_STUDY){
