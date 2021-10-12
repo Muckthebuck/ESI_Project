@@ -60,18 +60,19 @@ void receiveEvent(int bytes) {
     x += (char)Wire.read(); // read from the I2C
   } 
   event=1;
-  //Serial.print(event);
+  Serial.println(x);
 }
 
 void loop() {
    lcd.clear();
    //Serial.println(x);
   if(event==1){
+    Serial.println("about to display");
     local_LCD_display(x);
   }
   
   delay(1000);
-  lcd.clear();
+  lcd.clear(); 
 }
 
 void turn_on(){
@@ -82,6 +83,8 @@ void local_LCD_display(String message){
    lcd.clear(); 
    char data[32];
    message.toCharArray(data, 33);
+   Serial.print(" inside lcd function ");
+   Serial.println(data);
    int i;
    
     for(i=0;i<16;i++){

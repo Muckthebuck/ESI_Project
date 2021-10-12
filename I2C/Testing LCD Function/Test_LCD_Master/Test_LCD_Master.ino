@@ -40,6 +40,7 @@ void setup() {
 
 void loop() {
   LCD_print("Hello","Mukul");
+  delay(5000);
 }
 
 String format_string_for_print(String str){
@@ -70,4 +71,3 @@ void LCD_print(String top_message, String bottom_message){
   }
   Wire.endTransmission(SLAVE);
 }
-
