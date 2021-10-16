@@ -10,6 +10,7 @@ const int LED = 13;
 String x = "";
 char buff[16];
 int event;
+char data[32];
 /*
  * pin layout
  * 7 - A, to turn on backlight
@@ -64,15 +65,15 @@ void receiveEvent(int bytes) {
 }
 
 void loop() {
-   lcd.clear();
+   //lcd.clear();
    //Serial.println(x);
   if(event==1){
     Serial.println("about to display");
     local_LCD_display(x);
   }
   
-  delay(1000);
-  lcd.clear(); 
+ // delay(1000);
+ // lcd.clear(); 
 }
 
 void turn_on(){
@@ -80,8 +81,8 @@ void turn_on(){
 }
 
 void local_LCD_display(String message){
-   lcd.clear(); 
-   char data[32];
+   //lcd.clear(); 
+   
    message.toCharArray(data, 33);
    Serial.print(" inside lcd function ");
    Serial.println(data);
