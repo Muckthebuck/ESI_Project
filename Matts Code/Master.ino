@@ -2,17 +2,12 @@
 #include <Wire.h>
 #include <Stepper.h>
 #include <LiquidCrystal.h>
-
-
-/////////////////////////////////////////// DEBUG VARIABLES ///////////////////////////////
-#define LCD_MAIN_ARDUINO true  // Is LCD shield connected to the arduino or not?
-#define LCD_SHIELD_BUTTONS false // are you using the buttons on the LCD? Doesn't allow for config mode
-
+#include <Buzzer.h>
 
 /////////////////////////////////////////// SETUP //////////////////////////////////////
 
 // LCD
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+#define BL_LCD 10
 
 
 
@@ -20,11 +15,15 @@ LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 // CLK 13, DAT 12, Reset 11
 virtuabotixRTC myRTC(13, 12, 11); 
 
+// Photo resistor pin
+#define PHOTO_PIN A3
+
 // PIR Sensor Pin
 #define PIR_PIN 3
 
 // Active Buzzer Pin
-#define ACTIVE_BUZZ_PIN 6
+#define ACTIVE_BUZZ_PIN 2
+Buzzer buzzer(ACTIVE_BUZZ_PIN);
 
 // Button Pins
 #define LEFT_BUTTON_PIN A3
@@ -66,7 +65,16 @@ int StepsRequired;
 #define STANDBY 3
 #define IN_STUDY 4
 #define IN_BREAK 5
+#define RESTART 6
 int state = 0;
+
+// Ready_to_study Variables
+bool RTS_message = 0;
+int RTS_timer = 5;
+unsigned long RTS_previous_time = 0;
+unsigned long RTS_wait_time = 60000; // In Milliseconds
+int RTS_reminder_hour;
+int RTS_reminder_count = 8;
 
 // Cancel Variables
 bool cancel_message = 0;
@@ -82,12 +90,15 @@ unsigned long current_time;
 const int am_interval = 1000;
 unsigned long am_prev_time = 0;
 
+// Restart Timer Variables
+int restart_timer_count = 12;
+
 // Timing Variables for timer
 int current_timer_length = 0; // Seconds
 int current_timer_time;
 unsigned long timer_start_time;
-int study_time_duration = 90; // Seconds
-int break_time_duration = 75; // Seconds
+int study_time_duration = 10; // Seconds
+int break_time_duration = 5; // Seconds
 
 // Timing Variables for config mode
  
@@ -96,6 +107,8 @@ int break_time_duration = 75; // Seconds
 bool left_btn = 0;
 bool right_btn = 0;
 bool third_btn = 0;
+bool photo_input = 0;
+bool enough_light = 0;
 bool PIR = 0;
 char data[32];
 
@@ -109,17 +122,19 @@ void setup() {
   Serial.begin(9600);
   // Begin Arduino Communication
   Wire.begin();
-  //myRTC.setDS1302Time(00,15,12,6,10,1,2014);
+  myRTC.setDS1302Time(00,15,12,6,10,1,2014);
   pinMode(PIR_PIN, INPUT);
-
-  
-//  pinMode(ACTIVE_BUZZ_PIN, OUTPUT);
+  pinMode(PHOTO_PIN, INPUT);
+  pinMode(BL_LCD, OUTPUT);
+  pinMode(ACTIVE_BUZZ_PIN, OUTPUT);
   pinMode(LEFT_BUTTON_PIN, INPUT);
   pinMode(RIGHT_BUTTON_PIN, INPUT);
   pinMode(THIRD_BUTTON_PIN, INPUT);
   lcd.begin(16, 2);                          // put your LCD parameters here
-  state = NO_MOVEMENT;
+  state = STANDBY;
   reset_inputs();
+  bl_lcd_control(1);
+  RTS_reminder_hour = myRTC.hours;
 }
 
 void loop() {
@@ -128,40 +143,20 @@ void loop() {
 }
 
 void check_inputs() {
-  if (LCD_SHIELD_BUTTONS==true){
-    int butt = analogRead(A0);
-    if (butt == 0) {
-      right_btn = 1;
-    } // Up button
-    else if (butt < 200) {
-      //button_num = 3;
-    } // Down button
-    else if (butt < 400){
-      //button_num = 4;
-    } // Left button for turning on the timer
-    else if (butt == 478){
-      left_btn = 1;
-    } // Select button
-    else if (butt < 800){
-      //button_num = 1;
-    }
-  } else {
     if (digitalRead(LEFT_BUTTON_PIN)){
       left_btn = 1;
     }
     if (digitalRead(RIGHT_BUTTON_PIN)){
       right_btn = 1;
     }
-    if (digitalRead(THIRD_BUTTON_PIN)){
-      third_btn = 1;
+    if (digitalRead(PIR_PIN)){
+      PIR = 1;
     }
-  }
+}
 
 
   
-  if (digitalRead(PIR_PIN)){
-    PIR = 1;
-  }
+  
 }
 
 void action_manager(){
@@ -174,7 +169,14 @@ void action_manager(){
     return;
   }
 
-  Serial.println(digitalRead(PIR_PIN));
+  if(is_enough_light()==0){
+    bl_lcd_control(0);
+    reset_inputs();
+    return;
+  } else {
+    bl_lcd_control(1);
+  }
+
   // Update the time on the variables
   myRTC.updateTime(); 
   //serial_print_time();
@@ -192,23 +194,37 @@ void action_manager(){
     }
   }
 
-  // Firstly, if we have no movement. Check if there has been movement and display "Ready to study?"
-  if(detected_movement()==1 && state==NO_MOVEMENT){
-    ready_to_study();
-  }
-
-  // Ready to study
-  if(state==READY_FOR_STUDY){
-    if(left_btn){
+  if(RTS_message==1){
+    RTS_timer--;
+    if (left_btn==1){
+      cancel_RTS_message();
       start_timer();
     } else if (right_btn){
+      cancel_RTS_message();
       go_to_standby();
+    } else if (RTS_timer<0){
+      cancel_RTS_message();      
+    } else {
+      LCD_overwrite_message_top = get_day_and_time();
+      LCD_overwrite_message_bottom = ("Study? L(Y):R(N)");
+      LCD_print("","");
     }
   }
 
+  // Firstly, if we have no movement. Check if there has been movement and display "Ready to study?"
+
   if(state==STANDBY){
-    if (third_btn){
-      ready_to_study();
+    if (detected_movement()&&RTS_has_time_passed(current_time)){
+      // Restrict PIR message to 8 per hour
+      if (RTS_reminder_remaining() > 0){
+        // continue
+      } else {
+        return;
+      }
+      go_to_ReadyToStudy_message();
+    }
+    if (left_btn||right_btn){
+      go_to_ReadyToStudy_message();
     } else {
       LCD_print(get_day_and_time(),random_string());
     }
@@ -220,7 +236,7 @@ void action_manager(){
       go_to_cancel_message();
     }
     if (current_timer_time >= 0){
-      LCD_print(("Timer: " + seconds_to_mmss(current_timer_time)) ,"In timer");
+      LCD_print(get_day_and_time(),("Timer: " + seconds_to_mmss(current_timer_time)));
     } else {
       study_timer_finished();
     }
@@ -232,17 +248,52 @@ void action_manager(){
       go_to_cancel_message();
     }
     if (current_timer_time >= 0){
-      LCD_print(("Break: " + seconds_to_mmss(current_timer_time)) ,"In timer");
+      LCD_print(get_day_and_time(), ("Break: " + seconds_to_mmss(current_timer_time)) );
     } else {
       break_timer_finished();
     }
   }
 
+  if(state==RESTART){
+    restart_timer_count--;
+    if (left_btn){
+      reset_inputs();
+      restart_timer_count = 12;
+      start_timer();
+    } else if (restart_timer_count==0 || right_btn){
+      reset_inputs();
+      restart_timer_count = 12;
+      go_to_standby();
+    }
+  }
   
-  
-  //LCD_print(get_day_and_time(),"boop a ti boop");
+}
 
+////////////////////// FUNCTIONS ///////////////////////////
+
+int RTS_has_time_passed(unsigned long current_time){
+  reset_inputs();
+  // Check if we are within first 60 seconds
+  if (RTS_previous_time == 0){
+    RTS_previous_time = current_time;
+    return 1;
+  }
   
+  if ((unsigned long)(current_time - RTS_previous_time) >= RTS_wait_time){
+    RTS_previous_time = current_time;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+int is_enough_light(){
+  Serial.println(analogRead(PHOTO_PIN));
+  if (analogRead(PHOTO_PIN)<150){
+    return 0;
+  } else {
+    return 1;
+  }
 }
 
 void cancel_cancel_message(){
@@ -252,6 +303,13 @@ void cancel_cancel_message(){
   cancel_timer = 5;
 }
 
+void cancel_RTS_message(){
+  reset_inputs();
+  RTS_message = 0;
+  LCD_overwrite = 0;
+  RTS_timer = 5;
+}
+
 void go_to_cancel_message(){
   reset_inputs();
   cancel_message = 1;
@@ -259,6 +317,27 @@ void go_to_cancel_message(){
   LCD_overwrite_message_top = "End timer?: R(Y)";
   LCD_overwrite_message_bottom = ((String)cancel_timer + " s to confirm");
   LCD_print("","");
+  
+}
+
+void go_to_ReadyToStudy_message(){
+  reset_inputs();
+  RTS_message = 1;
+  LCD_overwrite = 1;
+  LCD_overwrite_message_top = get_day_and_time();
+  LCD_overwrite_message_bottom = ("Study? L(Y):R(N)");
+  LCD_print("","");
+}
+
+int RTS_reminder_remaining(){
+  if (RTS_reminder_hour != myRTC.hours){
+    RTS_reminder_hour = myRTC.hours;
+    RTS_reminder_count = 8;
+  } else if (RTS_reminder_count == 0){
+  } else {
+    RTS_reminder_count--;
+  }
+  return RTS_reminder_count;
 }
 
 void go_to_standby(){
@@ -268,8 +347,9 @@ void go_to_standby(){
 
 void break_timer_finished(){
   reset_inputs();
-  LCD_print("Study? L(Y):R(N)"," ");
-  state = READY_FOR_STUDY;
+  buzzer_tone();
+  LCD_print("Restart timer?","L(Y):R(N)");
+  state = RESTART;
 }
 
 void study_timer_finished(){
@@ -277,7 +357,8 @@ void study_timer_finished(){
   timer_start_time = millis();
   current_timer_length = break_time_duration;
   current_timer_time = break_time_duration+1;
-  LCD_print(("Break: " + seconds_to_mmss(current_timer_time)) ,"In timer");
+  happy_jingle();
+  LCD_print(get_day_and_time(), ("Break: " + seconds_to_mmss(current_timer_time)) );
 }
 
 void update_current_timer_time(){
@@ -292,7 +373,7 @@ void start_timer(){
   timer_start_time = millis();
   current_timer_length = study_time_duration;
   current_timer_time = study_time_duration+1;
-  LCD_print(("Timer: " + seconds_to_mmss(current_timer_time)) ,"In timer");
+  LCD_print(get_day_and_time(),("Timer: " + seconds_to_mmss(current_timer_time)));
 }
 
 void ready_to_study(){
@@ -327,16 +408,11 @@ void LCD_print(String top_message, String bottom_message){
   } else {
     full_message = top+bottom;
   }
-  if (LCD_MAIN_ARDUINO){
-      local_LCD_display(full_message);
-  } else {
-    Wire.beginTransmission(SLAVE); // transmit to device #9
-    for(int i=0; i<32; i++){
-      Wire.write(full_message[i]);
-    }
-    Wire.endTransmission(SLAVE);
+  Wire.beginTransmission(SLAVE); // transmit to device #9
+  for(int i=0; i<32; i++){
+    Wire.write(full_message[i]);
   }
-  
+  Wire.endTransmission(SLAVE);
 }
 
 String format_string_for_print(String str){
@@ -428,4 +504,43 @@ String seconds_to_mmss(int seconds){
 
 String random_string(){
   return random_message[random(0, 3)];
+}
+
+void bl_lcd_control(uint16_t val) {
+  // Currently set to between 11pm and 7am we idle
+  // Need to introduce motion sensor variable to turn brightness up
+  if (val==1) {
+    analogWrite(BL_LCD, 255);
+  } else {
+    analogWrite(BL_LCD, 0);
+  }
+}
+
+void happy_jingle(){
+  buzzer.begin(0);
+
+  buzzer.sound(NOTE_D5, 260);
+  buzzer.sound(NOTE_DS5, 520);
+  buzzer.sound(NOTE_GS5, 260);
+  buzzer.sound(NOTE_F5, 520);
+  buzzer.sound(NOTE_D5, 260);
+  buzzer.sound(NOTE_DS5, 520);
+  buzzer.sound(NOTE_GS5, 800);
+  buzzer.sound(NOTE_F5, 1000 );  
+  
+  buzzer.end(100);
+}
+
+void buzzer_tone(){
+  buzzer.begin(0);
+  buzzer.sound(NOTE_D5, 260);
+  buzzer.sound(0, 260);
+  buzzer.sound(NOTE_D5, 260);
+  buzzer.sound(0, 260);
+  buzzer.sound(NOTE_D5, 260);
+  buzzer.sound(0, 260);
+  buzzer.sound(NOTE_D5, 260);
+  buzzer.sound(0, 260);
+  
+  buzzer.end(100);
 }
