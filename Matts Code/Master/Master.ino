@@ -6,8 +6,8 @@
 
 /////////////////////////////////////////// SETUP //////////////////////////////////////
 
-// LCD
-#define BL_LCD 10
+//// LCD
+//#define BL_LCD 10
 
 
 
@@ -116,8 +116,35 @@ char data[32];
 String random_message[] = {"Hello world", "maybe study?", "No youtube :("};
 int random_message_loop_count = 0;
 
+//functions
 
-
+int RTS_has_time_passed(unsigned long current_time);
+int is_enough_light();
+void cancel_cancel_message();
+void cancel_RTS_message();
+void go_to_cancel_message();
+void go_to_ReadyToStudy_message();
+int RTS_reminder_remaining();
+void go_to_standby();
+void break_timer_finished();
+void study_timer_finished();
+void update_current_timer_time();
+void start_timer();
+void ready_to_study();
+void reset_inputs();
+int detected_movement();
+void LCD_print(String top_message, String bottom_message);
+String format_string_for_print(String str);
+void local_LCD_display(String message);
+String get_day_and_time();
+String leading_zero(uint8_t val);
+void buzzer_tone();
+void happy_jingle();
+void bl_lcd_control(uint16_t val);
+String random_string();
+String seconds_to_mmss(int seconds);
+void serial_print_time();
+void action_manager();
 void setup() {
   Serial.begin(9600);
   // Begin Arduino Communication
@@ -125,15 +152,15 @@ void setup() {
   myRTC.setDS1302Time(00,15,12,6,10,1,2014);
   pinMode(PIR_PIN, INPUT);
   pinMode(PHOTO_PIN, INPUT);
-  pinMode(BL_LCD, OUTPUT);
+  //pinMode(BL_LCD, OUTPUT);
   pinMode(ACTIVE_BUZZ_PIN, OUTPUT);
   pinMode(LEFT_BUTTON_PIN, INPUT);
   pinMode(RIGHT_BUTTON_PIN, INPUT);
   pinMode(THIRD_BUTTON_PIN, INPUT);
-  lcd.begin(16, 2);                          // put your LCD parameters here
+  //lcd.begin(16, 2);                          // put your LCD parameters here
   state = STANDBY;
   reset_inputs();
-  bl_lcd_control(1);
+//  bl_lcd_control(1);
   RTS_reminder_hour = myRTC.hours;
 }
 
@@ -155,10 +182,6 @@ void check_inputs() {
 }
 
 
-  
-  
-}
-
 void action_manager(){
   // https://docs.google.com/document/d/1u9RpGDv0Du3XHBDmag-IDaQyKIT7uMIzJ4LOqx1lm7U/edit#heading=h.sil5lysrvarm
   // Limits how quickly this function happens.
@@ -170,11 +193,11 @@ void action_manager(){
   }
 
   if(is_enough_light()==0){
-    bl_lcd_control(0);
+  //  bl_lcd_control(0);
     reset_inputs();
     return;
   } else {
-    bl_lcd_control(1);
+   // bl_lcd_control(1);
   }
 
   // Update the time on the variables
@@ -303,6 +326,7 @@ void cancel_cancel_message(){
   cancel_timer = 5;
 }
 
+
 void cancel_RTS_message(){
   reset_inputs();
   RTS_message = 0;
@@ -340,10 +364,12 @@ int RTS_reminder_remaining(){
   return RTS_reminder_count;
 }
 
+
 void go_to_standby(){
   state=STANDBY;
   reset_inputs();
 }
+
 
 void break_timer_finished(){
   reset_inputs();
@@ -367,6 +393,7 @@ void update_current_timer_time(){
   current_timer_time--;
 }
 
+
 void start_timer(){
   state = IN_STUDY;
   reset_inputs();
@@ -382,6 +409,7 @@ void ready_to_study(){
   reset_inputs();
 }
 
+
 void reset_inputs(){
   PIR=0;
   left_btn=0;
@@ -396,7 +424,6 @@ int detected_movement(){
     return 0;
   }
 }
-
 
 void LCD_print(String top_message, String bottom_message){
   String top = format_string_for_print(top_message);
@@ -436,18 +463,18 @@ String format_string_for_print(String str){
 }
 
 void local_LCD_display(String message){
-   //lcd.clear(); 
-   message.toCharArray(data, 33);
-   int i;
-   for(i=0;i<16;i++){
-     lcd.setCursor(i,0);
-     lcd.write(data[i]);
-   }   
-   for(i=16;i<32;i++){
-     lcd.setCursor(i-16,1);
-     lcd.write(data[i]);
-   }
-   //Serial.println(message + "3");
+//   //lcd.clear(); 
+//   message.toCharArray(data, 33);
+//   int i;
+//   for(i=0;i<16;i++){
+//     lcd.setCursor(i,0);
+//     lcd.write(data[i]);
+//   }   
+//   for(i=16;i<32;i++){
+//     lcd.setCursor(i-16,1);
+//     lcd.write(data[i]);
+//   }
+//   //Serial.println(message + "3");
 }
 
 String get_day_and_time(){
@@ -473,6 +500,7 @@ String get_day_and_time(){
   return output_string;
 }
 
+
 String leading_zero(uint8_t val){
     if (val < 10)   // <10 = 09, 08, 07, 06, 05, 04, 03, 02, 01, 00 
     {
@@ -496,11 +524,13 @@ void serial_print_time(){
   Serial.println(myRTC.seconds);
 }
 
+
 String seconds_to_mmss(int seconds){
   uint8_t timer_mins = seconds/60;
   uint8_t timer_secs = seconds%60;
   return (leading_zero(timer_mins)+":"+leading_zero(timer_secs));
 }
+
 
 String random_string(){
   return random_message[random(0, 3)];
@@ -510,9 +540,9 @@ void bl_lcd_control(uint16_t val) {
   // Currently set to between 11pm and 7am we idle
   // Need to introduce motion sensor variable to turn brightness up
   if (val==1) {
-    analogWrite(BL_LCD, 255);
+//    analogWrite(BL_LCD, 255);
   } else {
-    analogWrite(BL_LCD, 0);
+//    analogWrite(BL_LCD, 0);
   }
 }
 

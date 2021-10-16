@@ -98,7 +98,7 @@ void loop() {
     Serial.println("about to display");
     local_LCD_display(x);
   }
-  //animation(smile, smile_frames);
+  animation(smile, smile_frames);
  // animation(bored, smile_frames);
  // delay(1000);
  // lcd.clear(); 
