@@ -7,9 +7,14 @@
 /////////////////////////////////////////// SETUP //////////////////////////////////////
 
 //// LCD
-//#define BL_LCD 10
+//command
+#define LIGHTSOFF 60 
+#define LIGHTSON 62
 
-
+#define SMILE 43
+#define SAD 44
+#define BORED 45
+#define QN 46
 
 // DS1302 controller Pins
 // CLK 5, DAT 4, Reset 6
@@ -111,7 +116,7 @@ bool photo_input = 0;
 bool enough_light = 0;
 bool PIR = 0;
 char data[32];
-
+int light_state = 1;
 // Messages
 String random_message[] = {"Hello world", "maybe study?", "No youtube :("};
 int random_message_loop_count = 0;
@@ -145,6 +150,8 @@ String random_string();
 String seconds_to_mmss(int seconds);
 void serial_print_time();
 void action_manager();
+void toggle_lights(int state);
+
 void setup() {
   Serial.begin(9600);
   // Begin Arduino Communication
@@ -191,13 +198,14 @@ void action_manager(){
   } else {
     return;
   }
-
-  if(is_enough_light()==0){
+  if(is_enough_light()==0){ 
   //  bl_lcd_control(0);
+    toggle_lights(LOW);
     reset_inputs();
     return;
   } else {
    // bl_lcd_control(1);
+   toggle_lights(1);
   }
 
   // Update the time on the variables
@@ -234,17 +242,13 @@ void action_manager(){
     }
   }
 
-  // Firstly, if we have no movement. Check if there has been movement and display "Ready to study?"
-
   if(state==STANDBY){
     if (detected_movement()&&RTS_has_time_passed(current_time)){
       // Restrict PIR message to 8 per hour
       if (RTS_reminder_remaining() > 0){
         // continue
-      } else {
-        return;
+         go_to_ReadyToStudy_message();
       }
-      go_to_ReadyToStudy_message();
     }
     if (left_btn||right_btn){
       go_to_ReadyToStudy_message();
@@ -295,7 +299,6 @@ void action_manager(){
 ////////////////////// FUNCTIONS ///////////////////////////
 
 int RTS_has_time_passed(unsigned long current_time){
-  reset_inputs();
   // Check if we are within first 60 seconds
   if (RTS_previous_time == 0){
     RTS_previous_time = current_time;
@@ -311,7 +314,7 @@ int RTS_has_time_passed(unsigned long current_time){
 }
 
 int is_enough_light(){
-  Serial.println(analogRead(PHOTO_PIN));
+//  Serial.println(analogRead(PHOTO_PIN));
   if (analogRead(PHOTO_PIN)<150){
     return 0;
   } else {
@@ -335,16 +338,17 @@ void cancel_RTS_message(){
 }
 
 void go_to_cancel_message(){
+  change_animation(QN);
   reset_inputs();
   cancel_message = 1;
   LCD_overwrite = 1;
   LCD_overwrite_message_top = "End timer?: R(Y)";
   LCD_overwrite_message_bottom = ((String)cancel_timer + " s to confirm");
-  LCD_print("","");
-  
+  LCD_print("","");  
 }
 
 void go_to_ReadyToStudy_message(){
+  change_animation(QN);
   reset_inputs();
   RTS_message = 1;
   LCD_overwrite = 1;
@@ -366,6 +370,7 @@ int RTS_reminder_remaining(){
 
 
 void go_to_standby(){
+  change_animation(BORED);
   state=STANDBY;
   reset_inputs();
 }
@@ -395,6 +400,7 @@ void update_current_timer_time(){
 
 
 void start_timer(){
+  change_animation(SMILE);
   state = IN_STUDY;
   reset_inputs();
   timer_start_time = millis();
@@ -425,6 +431,26 @@ int detected_movement(){
   }
 }
 
+void toggle_lights(int state){
+  Wire.beginTransmission(SLAVE);
+  if(light_state!=state){
+    light_state=state;
+    if(state ==1){
+      Wire.write((char)LIGHTSON);
+    }else{
+      Wire.write((char)LIGHTSOFF);
+    }
+     Wire.endTransmission(SLAVE);
+  }
+}
+
+void change_animation(int state){
+      Wire.beginTransmission(SLAVE);
+      Wire.write(state);
+      Wire.endTransmission(SLAVE);
+}
+
+
 void LCD_print(String top_message, String bottom_message){
   String top = format_string_for_print(top_message);
   String bottom = format_string_for_print(bottom_message);
@@ -435,6 +461,7 @@ void LCD_print(String top_message, String bottom_message){
   } else {
     full_message = top+bottom;
   }
+  Serial.println(full_message);
   Wire.beginTransmission(SLAVE); // transmit to device #9
   for(int i=0; i<32; i++){
     Wire.write(full_message[i]);
