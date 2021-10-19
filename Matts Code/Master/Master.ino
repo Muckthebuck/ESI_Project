@@ -489,7 +489,6 @@ void LCD_print(String top_message, String bottom_message){
     full_message = top+bottom;
   }
   full_message[31]= animation_state;
-  Serial.println(full_message);
   if(prev_message!=full_message){
     
     prev_message = full_message;
