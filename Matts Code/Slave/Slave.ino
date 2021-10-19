@@ -20,6 +20,7 @@ int lights=1;
 #define QN 46
 
 const int columns = 8;
+int animation_state=BORED;
 void animation(int movie[][columns]);
 void store();
 const int frames = 4;
@@ -57,7 +58,7 @@ char data[32];
  * 12 - D6
  * 13 - D7
  */
-
+int next=0;
 //initialise LCD library
 const int rs = 8, en =9, d4 = 10, d5=11, d6=12, d7=13, lcd_on=7;
 LiquidCrystal lcd(rs,en,d4,d5,d6,d7);
@@ -115,18 +116,28 @@ void loop() {
       lights=1;
       turn_on();
     }else if(x[0]==SMILE||x[0]==SAD||x[0]==BORED||x[0]==QN){
-      // Serial.println(x);
+     // Serial.println((int)x[0]);
       if(x[0] == SMILE){
-        animation(smile);
+        animation_state = SMILE;
       }else if(x[0] == SAD){
-       animation(sad);
+       animation_state = SAD;
       }else if(x[0] == BORED){
-       animation(bored);
+       animation_state = BORED;
       }else if(x[0]== QN){
-       animation(question);
+       animation_state = QN;
       } 
     }else{
+     //  Serial.println(x);
       local_LCD_display(x);
+      if(animation_state == SMILE){
+        animation(smile);
+      }else if(animation_state == SAD){
+       animation(sad);
+      }else if(animation_state == BORED){
+       animation(bored);
+      }else if(animation_state== QN){
+       animation(question);
+      } 
     }
   }
    
@@ -152,7 +163,6 @@ void local_LCD_display(String message){
   // Serial.print(" inside lcd function ");
    //Serial.println(data);
    int i;
-   Serial.println(data);
     for(i=0;i<16;i++){
       lcd.setCursor(i,0);
       lcd.write(data[i]);
@@ -169,7 +179,7 @@ void change_animation(String x){
 
 void animation(const int movie[][columns]){
   for(int j=0;j<frames;j++){
-    for(int k=0;k<1000;k++){
+    for(int k=0;k<500;k++){
       for (int i=0; i<8; i++) {
        shiftOut(DATA, SHIFT, LSBFIRST, ~movie[j][i]);
        shiftOut(DATA, SHIFT, LSBFIRST, 128 >> i);

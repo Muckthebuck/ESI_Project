@@ -73,7 +73,7 @@ int StepsRequired;
 #define IN_BREAK 5
 #define RESTART 6
 int state = 0;
-
+int animation_state=BORED;
 // Ready_to_study Variables
 bool RTS_message = 0;
 int RTS_timer = 5;
@@ -246,6 +246,7 @@ void action_manager(){
 
   // Standby State logic
   if(state==STANDBY){
+    animation_state = BORED;
     if (detected_movement()&&RTS_has_time_passed(current_time)){
       // Restrict PIR message to 8 per hour
       if (RTS_reminder_remaining() > 0){
@@ -262,6 +263,7 @@ void action_manager(){
 
   // In timer state logic
   if(state==IN_STUDY){
+    animation_state = SMILE;
     update_current_timer_time();
     if (cancel_message==0&&(left_btn||right_btn)){
       go_to_cancel_message();
@@ -347,7 +349,7 @@ void cancel_RTS_message(){
 
 // Display cancel message
 void go_to_cancel_message(){
-  change_animation(QN);
+  animation_state = QN;
   reset_inputs();
   cancel_message = 1;
   LCD_overwrite = 1;
@@ -358,7 +360,7 @@ void go_to_cancel_message(){
 
 // Display Ready to study message
 void go_to_ReadyToStudy_message(){
-  change_animation(QN);
+  animation_state = QN;
   reset_inputs();
   RTS_message = 1;
   LCD_overwrite = 1;
@@ -382,7 +384,7 @@ int RTS_reminder_remaining(){
 
 // Switch to standby state
 void go_to_standby(){
-  change_animation(BORED);
+  animation_state = BORED;
   state=STANDBY;
   reset_inputs();
 }
@@ -480,6 +482,8 @@ void LCD_print(String top_message, String bottom_message){
     Wire.write(full_message[i]);
   }
   Wire.endTransmission(SLAVE);
+  delayMicroseconds(10);
+  change_animation(animation_state);
 }
 
 // Format a string to be exactly 16 characters by adding spaces
