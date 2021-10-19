@@ -22,6 +22,7 @@ virtuabotixRTC myRTC(5, 4, 6);
 
 // Photo resistor pin
 #define PHOTO_PIN A0
+#define PHOTO_THRESHOLD 150
 
 // PIR Sensor Pin
 #define PIR_PIN 3
@@ -105,7 +106,9 @@ unsigned long timer_start_time;
 int study_time_duration = 10; // Seconds
 int break_time_duration = 5; // Seconds
 
-// Timing Variables for config mode
+// Animation variables
+int previous_animation;
+int current_animation;
  
 
 // Sensor/button trigger status
@@ -159,15 +162,12 @@ void setup() {
   myRTC.setDS1302Time(00,15,12,6,10,1,2014);
   pinMode(PIR_PIN, INPUT);
   pinMode(PHOTO_PIN, INPUT);
-  //pinMode(BL_LCD, OUTPUT);
   pinMode(ACTIVE_BUZZ_PIN, OUTPUT);
   pinMode(LEFT_BUTTON_PIN, INPUT);
   pinMode(RIGHT_BUTTON_PIN, INPUT);
   pinMode(THIRD_BUTTON_PIN, INPUT);
-  //lcd.begin(16, 2);                          // put your LCD parameters here
   state = STANDBY;
   reset_inputs();
-//  bl_lcd_control(1);
   RTS_reminder_hour = myRTC.hours;
 }
 
@@ -198,26 +198,27 @@ void action_manager(){
   } else {
     return;
   }
+
+  // Check Photoresistor, if high, turn on screen, otherwise exit action manager.
   if(is_enough_light()==0){ 
-  //  bl_lcd_control(0);
     toggle_lights(LOW);
     reset_inputs();
     return;
   } else {
-   // bl_lcd_control(1);
    toggle_lights(1);
   }
 
-  // Update the time on the variables
+  // Update time on RTC
   myRTC.updateTime(); 
-  //serial_print_time();
 
+  // Cancel message state logic
   if(cancel_message==1){
     cancel_timer--;
     if (right_btn==1){
       cancel_cancel_message();
       go_to_standby();
     } else if (cancel_timer<0){
+      change_animation(previous_animation);
       cancel_cancel_message();
     } else {
       LCD_overwrite_message_bottom = ((String)cancel_timer + " s to confirm");
@@ -225,6 +226,7 @@ void action_manager(){
     }
   }
 
+  // Ready to study state logic
   if(RTS_message==1){
     RTS_timer--;
     if (left_btn==1){
@@ -242,6 +244,7 @@ void action_manager(){
     }
   }
 
+  // Standby State logic
   if(state==STANDBY){
     if (detected_movement()&&RTS_has_time_passed(current_time)){
       // Restrict PIR message to 8 per hour
@@ -256,7 +259,8 @@ void action_manager(){
       LCD_print(get_day_and_time(),random_string());
     }
   }
-  
+
+  // In timer state logic
   if(state==IN_STUDY){
     update_current_timer_time();
     if (cancel_message==0&&(left_btn||right_btn)){
@@ -269,6 +273,7 @@ void action_manager(){
     }
   }
 
+  // In break state logic
   if(state==IN_BREAK){
     update_current_timer_time();
     if (cancel_message==0&&(left_btn||right_btn)){
@@ -281,6 +286,7 @@ void action_manager(){
     }
   }
 
+  // Restart state logic
   if(state==RESTART){
     restart_timer_count--;
     if (left_btn){
@@ -298,8 +304,9 @@ void action_manager(){
 
 ////////////////////// FUNCTIONS ///////////////////////////
 
+// Check if enough time has passed between PIR activated Ready to study messages
 int RTS_has_time_passed(unsigned long current_time){
-  // Check if we are within first 60 seconds
+  // Check if we are within first 60 seconds <- this is an edge case
   if (RTS_previous_time == 0){
     RTS_previous_time = current_time;
     return 1;
@@ -313,15 +320,16 @@ int RTS_has_time_passed(unsigned long current_time){
   }
 }
 
+// Check if the Photo resistor is above the threshold
 int is_enough_light(){
-//  Serial.println(analogRead(PHOTO_PIN));
-  if (analogRead(PHOTO_PIN)<150){
+  if (analogRead(PHOTO_PIN)<PHOTO_THRESHOLD){
     return 0;
   } else {
     return 1;
   }
 }
 
+// Exit cancel message
 void cancel_cancel_message(){
   reset_inputs();
   cancel_message = 0;
@@ -329,7 +337,7 @@ void cancel_cancel_message(){
   cancel_timer = 5;
 }
 
-
+// Exit Ready to study message
 void cancel_RTS_message(){
   reset_inputs();
   RTS_message = 0;
@@ -337,6 +345,7 @@ void cancel_RTS_message(){
   RTS_timer = 5;
 }
 
+// Display cancel message
 void go_to_cancel_message(){
   change_animation(QN);
   reset_inputs();
@@ -347,6 +356,7 @@ void go_to_cancel_message(){
   LCD_print("","");  
 }
 
+// Display Ready to study message
 void go_to_ReadyToStudy_message(){
   change_animation(QN);
   reset_inputs();
@@ -357,6 +367,8 @@ void go_to_ReadyToStudy_message(){
   LCD_print("","");
 }
 
+// Return how many reminders are remaining. Limited to 8 per hour from the PIR
+// This function does not get used when RTS message is activated from hitting left or right
 int RTS_reminder_remaining(){
   if (RTS_reminder_hour != myRTC.hours){
     RTS_reminder_hour = myRTC.hours;
@@ -368,14 +380,14 @@ int RTS_reminder_remaining(){
   return RTS_reminder_count;
 }
 
-
+// Switch to standby state
 void go_to_standby(){
   change_animation(BORED);
   state=STANDBY;
   reset_inputs();
 }
 
-
+// Break Timer has finished, transition to RESTART state
 void break_timer_finished(){
   reset_inputs();
   buzzer_tone();
@@ -383,6 +395,7 @@ void break_timer_finished(){
   state = RESTART;
 }
 
+// Study Timer has finished, transistion to BREAK state
 void study_timer_finished(){
   state = IN_BREAK;
   timer_start_time = millis();
@@ -392,13 +405,14 @@ void study_timer_finished(){
   LCD_print(get_day_and_time(), ("Break: " + seconds_to_mmss(current_timer_time)) );
 }
 
+// Updates timer count. I guess we can get more accurate by adding checking against the RTC
 void update_current_timer_time(){
   //int time_elapsed = (current_time - timer_start_time)/1000; // time elapsed in seconds
   //current_timer_time = current_timer_length - time_elapsed;
   current_timer_time--;
 }
 
-
+// Start the timer!
 void start_timer(){
   change_animation(SMILE);
   state = IN_STUDY;
@@ -409,13 +423,7 @@ void start_timer(){
   LCD_print(get_day_and_time(),("Timer: " + seconds_to_mmss(current_timer_time)));
 }
 
-void ready_to_study(){
-  state = READY_FOR_STUDY;
-  LCD_print("Ready for study?","L: Yes R:No");
-  reset_inputs();
-}
-
-
+// Resets all the inputs so we can get some fresh data
 void reset_inputs(){
   PIR=0;
   left_btn=0;
@@ -423,6 +431,7 @@ void reset_inputs(){
   third_btn=0;
 }
 
+// How we detect movement
 int detected_movement(){
   if(PIR==1){
     return 1;
@@ -431,11 +440,12 @@ int detected_movement(){
   }
 }
 
-void toggle_lights(int state){
+// Send message to other arduino to change the state of the backlight
+void toggle_lights(int next_state){
   Wire.beginTransmission(SLAVE);
-  if(light_state!=state){
-    light_state=state;
-    if(state ==1){
+  if(light_state!=next_state){
+    light_state=next_state;
+    if(next_state ==1){
       Wire.write((char)LIGHTSON);
     }else{
       Wire.write((char)LIGHTSOFF);
@@ -444,13 +454,16 @@ void toggle_lights(int state){
   }
 }
 
-void change_animation(int state){
-      Wire.beginTransmission(SLAVE);
-      Wire.write(state);
-      Wire.endTransmission(SLAVE);
+// Send a message to other arduino to change animation
+void change_animation(int animation){
+  previous_animation = current_animation;
+  current_animation = animation;
+  Wire.beginTransmission(SLAVE);
+  Wire.write(animation);
+  Wire.endTransmission(SLAVE);
 }
 
-
+// Send a string to the other arduino to Display a message
 void LCD_print(String top_message, String bottom_message){
   String top = format_string_for_print(top_message);
   String bottom = format_string_for_print(bottom_message);
@@ -469,6 +482,7 @@ void LCD_print(String top_message, String bottom_message){
   Wire.endTransmission(SLAVE);
 }
 
+// Format a string to be exactly 16 characters by adding spaces
 String format_string_for_print(String str){
   // Formats a string to be exactly 16 characters
   int str_length = str.length();
@@ -489,21 +503,7 @@ String format_string_for_print(String str){
   return temp_str;
 }
 
-void local_LCD_display(String message){
-//   //lcd.clear(); 
-//   message.toCharArray(data, 33);
-//   int i;
-//   for(i=0;i<16;i++){
-//     lcd.setCursor(i,0);
-//     lcd.write(data[i]);
-//   }   
-//   for(i=16;i<32;i++){
-//     lcd.setCursor(i-16,1);
-//     lcd.write(data[i]);
-//   }
-//   //Serial.println(message + "3");
-}
-
+// Returns the day then time
 String get_day_and_time(){
   int day_number = myRTC.dayofweek;
   String day_of_week;
@@ -523,11 +523,11 @@ String get_day_and_time(){
   } else if (day_number == 7){
     day_of_week = "Saturday ";
   } 
-  output_string = (day_of_week + leading_zero(myRTC.hours) + ":" + leading_zero(myRTC.minutes));
+  output_string = (day_of_week +" " +leading_zero(myRTC.hours) + ":" + leading_zero(myRTC.minutes));
   return output_string;
 }
 
-
+// Adds a leading zero to a single digit number
 String leading_zero(uint8_t val){
     if (val < 10)   // <10 = 09, 08, 07, 06, 05, 04, 03, 02, 01, 00 
     {
@@ -551,26 +551,16 @@ void serial_print_time(){
   Serial.println(myRTC.seconds);
 }
 
-
+// Converts an amount of seconds to mm:ss
 String seconds_to_mmss(int seconds){
   uint8_t timer_mins = seconds/60;
   uint8_t timer_secs = seconds%60;
   return (leading_zero(timer_mins)+":"+leading_zero(timer_secs));
 }
 
-
+// Returns a random string
 String random_string(){
   return random_message[random(0, 3)];
-}
-
-void bl_lcd_control(uint16_t val) {
-  // Currently set to between 11pm and 7am we idle
-  // Need to introduce motion sensor variable to turn brightness up
-  if (val==1) {
-//    analogWrite(BL_LCD, 255);
-  } else {
-//    analogWrite(BL_LCD, 0);
-  }
 }
 
 void happy_jingle(){
