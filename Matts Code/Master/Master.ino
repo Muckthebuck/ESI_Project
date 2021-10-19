@@ -120,12 +120,12 @@ bool enough_light = 0;
 bool PIR = 0;
 char data[32];
 int light_state = 1;
-
 // Messages
-String random_message[] = {"Hello world", "maybe study?", "No youtube :("};
 const int random_string_limit = 10;
 int random_string_timer = 0;
 int random_string_number;
+String random_message[] = {"Hello world", "maybe study?", "No youtube :("};
+int random_message_loop_count = 0;
 
 //functions
 
@@ -159,10 +159,11 @@ void action_manager();
 void toggle_lights(int state);
 
 void setup() {
-  Serial.begin(9600);
+ // Serial.begin(9600);
   // Begin Arduino Communication
   Wire.begin();
-  myRTC.setDS1302Time(00,15,12,6,10,1,2014);
+  //sec,min,hour,dayoftheweek,month,day,year
+  //myRTC.setDS1302Time(00,31,11,3,10,19,2021);
   pinMode(PIR_PIN, INPUT);
   pinMode(PHOTO_PIN, INPUT);
   pinMode(ACTIVE_BUZZ_PIN, OUTPUT);
@@ -506,7 +507,7 @@ String format_string_for_print(String str){
   // Formats a string to be exactly 16 characters
   int str_length = str.length();
   if (str_length>16){
-    Serial.println("Problem with string");
+  //  Serial.println("Problem with string");
     return "String Too Long";
     // Invalid input
   }

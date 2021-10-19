@@ -37,12 +37,12 @@ const int smile[frames][8] = {{0,36,36,36,0,66,60,0},
                  {0, 0,36,0, 0, 0,60,0},
                  {0, 0,36,0, 0, 0,60,0},
                  {0,36,36,36,0,66,60,0}};
-const int sad[frames][8] = {{0, 0,36,0, 0, 0,24,0},
+const int sad[frames][8] = {{0, 0,36,36, 0, 0,24,0},
                           {0, 0,36,0, 0, 0,24,0},
-                          {0, 0,36,0, 0, 0,24,0},
-                          {0, 0,36,0, 0, 0,60,0},
-                          {0, 0,36,0, 0, 0,60,0},
-                          {0, 0,102,0, 0, 0,60,66}};
+                          {0, 0,36,36, 0, 0,60,66},
+                          {0, 0,36,0, 0, 0,60,66},
+                          {0, 0,36,36, 0, 0,60,66},
+                          {0, 0,36,0, 0, 0,60,66}};
                                
 const int bored[frames][8] = {{0, 0,36,0, 0, 0,24,0},
                          {0, 0,102,0, 0, 0,24,0},
@@ -93,7 +93,7 @@ byte Heart[8] = {
 
 void setup() {
   // Define the LED pin as Output
-  Serial.begin(9600);
+ // Serial.begin(9600);
   //8by8 led matrix
    pinMode(DATA, OUTPUT);
    pinMode(SHIFT, OUTPUT);
@@ -103,7 +103,7 @@ void setup() {
   lcd.begin(16,2);
   delay (500);
   lcd.createChar(0, Heart);
-  //lcd.clear();
+  lcd.clear();
   // Start the I2C Bus as Slave on address 9
   Wire.begin(9); 
   // Attach a function to trigger when something is received.
@@ -120,6 +120,9 @@ void receiveEvent(int bytes) {
     x += (char)Wire.read(); // read from the I2C
   } 
   event=1;
+  if(x==""){
+    event=0;
+  }
 }
 
 void loop() {
@@ -150,6 +153,10 @@ void loop() {
       animation_state = (int)lcd_message_buff[31];
       if(lcd_message_buff[30]=='N'){
         animation_state = QN;
+      }else if(x.substring(16,21)=="Break"){
+        animation_state = SMILE;
+      }else if(x.substring(0,3) == "End"){
+         animation_state = SAD;
       }
        local_LCD_display(lcd_message_buff);  
      }
@@ -179,14 +186,15 @@ void turn_on(){
 }
 
 void turn_off(){
+  lcd.clear(); 
   digitalWrite(lcd_on, LOW);
 }
 
 void local_LCD_display(char data[32]){
-   lcd.clear(); 
+  // lcd.clear(); 
   // message.toCharArray(data, 33);
   // Serial.print(" inside lcd function ");
-   Serial.println(data);
+   //Serial.println(data);
    data[31]=' ';
    if(data[30]=='N'){
     data[31]=')';
