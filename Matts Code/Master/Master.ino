@@ -120,9 +120,12 @@ bool enough_light = 0;
 bool PIR = 0;
 char data[32];
 int light_state = 1;
+
 // Messages
 String random_message[] = {"Hello world", "maybe study?", "No youtube :("};
-int random_message_loop_count = 0;
+const int random_string_limit = 10;
+int random_string_timer = 0;
+int random_string_number;
 
 //functions
 
@@ -486,6 +489,7 @@ void LCD_print(String top_message, String bottom_message){
     full_message = top+bottom;
   }
   full_message[31]= animation_state;
+  Serial.println(full_message);
   if(prev_message!=full_message){
     
     prev_message = full_message;
@@ -576,7 +580,13 @@ String seconds_to_mmss(int seconds){
 
 // Returns a random string
 String random_string(){
-  return random_message[random(0, 3)];
+  if (random_string_timer > random_string_limit){
+    random_string_number = random(0,3);
+    random_string_timer = 0;
+  } else {
+    random_string_timer++;
+  }
+  return random_message[random_string_number];
 }
 
 void happy_jingle(){
