@@ -106,8 +106,10 @@ unsigned long timer_start_time;
 int study_time_duration = 10; // Seconds
 int break_time_duration = 5; // Seconds
 
+String prev_message="";
 // Animation variables
- 
+ int previous_animation;
+int current_animation;
 
 // Sensor/button trigger status
 bool left_btn = 0;
@@ -216,6 +218,7 @@ void action_manager(){
       cancel_cancel_message();
       go_to_standby();
     } else if (cancel_timer<0){
+     // change_animation(previous_animation); 
       cancel_cancel_message();
     } else {
       LCD_overwrite=1;
@@ -237,6 +240,7 @@ void action_manager(){
       cancel_RTS_message();      
     } else {
       LCD_overwrite = 1;
+      animation_state = QN;
       LCD_overwrite_message_top = get_day_and_time();
       LCD_overwrite_message_bottom = ("Study? L(Y):R(N)");
       LCD_print("","");
@@ -349,7 +353,8 @@ void cancel_RTS_message(){
 
 // Display cancel message
 void go_to_cancel_message(){
-  animation_state = QN;
+     animation_state = QN;
+  // change_animation(QN);
   reset_inputs();
   cancel_message = 1;
   LCD_overwrite = 1;
@@ -360,11 +365,13 @@ void go_to_cancel_message(){
 
 // Display Ready to study message
 void go_to_ReadyToStudy_message(){
-  animation_state = QN;
+   animation_state = QN;
+ // change_animation(QN);
   reset_inputs();
   RTS_message = 1;
   LCD_overwrite = 1;
   LCD_overwrite_message_top = get_day_and_time();
+//  animation_state = QN;
   LCD_overwrite_message_bottom = ("Study? L(Y):R(N)");
   LCD_print("","");
 }
@@ -384,9 +391,11 @@ int RTS_reminder_remaining(){
 
 // Switch to standby state
 void go_to_standby(){
-  animation_state = BORED;
+  //animation_state = BORED;
   state=STANDBY;
   reset_inputs();
+  animation_state = BORED;
+ // change_animation(BORED);
 }
 
 // Break Timer has finished, transition to RESTART state
@@ -399,6 +408,7 @@ void break_timer_finished(){
 
 // Study Timer has finished, transistion to BREAK state
 void study_timer_finished(){
+  animation_state = QN;
   state = IN_BREAK;
   timer_start_time = millis();
   current_timer_length = break_time_duration;
@@ -458,6 +468,8 @@ void toggle_lights(int next_state){
 
 // Send a message to other arduino to change animation
 void change_animation(int animation){
+  previous_animation = current_animation;
+  current_animation = animation;
   Wire.beginTransmission(SLAVE);
   Wire.write(animation);
   Wire.endTransmission(SLAVE);
@@ -465,7 +477,6 @@ void change_animation(int animation){
 
 // Send a string to the other arduino to Display a message
 void LCD_print(String top_message, String bottom_message){
-  change_animation(animation_state);
   String top = format_string_for_print(top_message);
   String bottom = format_string_for_print(bottom_message);
   String full_message;
@@ -474,12 +485,17 @@ void LCD_print(String top_message, String bottom_message){
   } else {
     full_message = top+bottom;
   }
-  Serial.println(full_message);
-  Wire.beginTransmission(SLAVE); // transmit to device #9
-  for(int i=0; i<32; i++){
-    Wire.write(full_message[i]);
+  full_message[31]= animation_state;
+  if(prev_message!=full_message){
+    
+    prev_message = full_message;
+       Wire.beginTransmission(SLAVE); // transmit to device #9
+    for(int i=0; i<32; i++){
+      Wire.write(full_message[i]);
+    }
+    Wire.endTransmission(SLAVE);
   }
-  Wire.endTransmission(SLAVE);
+ 
 }
 
 // Format a string to be exactly 16 characters by adding spaces

@@ -19,26 +19,41 @@ int lights=1;
 #define BORED 45
 #define QN 46
 
+//time keeping variables
+int STORE_period = 10;
+unsigned long STORE_prev_time1 = 0;
+unsigned long STORE_prev_time2 = 0;
+unsigned long ANIMATION_prev_time = 0;
+
+int Store_high=0;
 const int columns = 8;
 int animation_state=BORED;
 void animation(int movie[][columns]);
 void store();
-const int frames = 4;
-const int smile[4][8] = {{0,36,36,36,0,66,60,0},
+const int frames = 6;
+const int smile[frames][8] = {{0,36,36,36,0,66,60,0},
+                 {0, 0,36,0, 0, 0,24,0},
                  {0, 0,36,0, 0, 0,24,0},
                  {0, 0,36,0, 0, 0,60,0},
+                 {0, 0,36,0, 0, 0,60,0},
                  {0,36,36,36,0,66,60,0}};
-const int sad[4][8] = {{0, 0,36,0, 0, 0,24,0},
-                      {0, 0,36,0, 0, 0,24,0},
-                      {0, 0,36,0, 0, 0,60,0},
-                      {0, 0,102,0, 0, 0,60,66}};
+const int sad[frames][8] = {{0, 0,36,0, 0, 0,24,0},
+                          {0, 0,36,0, 0, 0,24,0},
+                          {0, 0,36,0, 0, 0,24,0},
+                          {0, 0,36,0, 0, 0,60,0},
+                          {0, 0,36,0, 0, 0,60,0},
+                          {0, 0,102,0, 0, 0,60,66}};
                                
-const int bored[4][8] = {{0, 0,36,0, 0, 0,24,0},
+const int bored[frames][8] = {{0, 0,36,0, 0, 0,24,0},
                          {0, 0,102,0, 0, 0,24,0},
+                         {0, 0,102,0, 0, 0,24,0},
+                         {0, 0,102,0, 0, 0,60,0},
                          {0, 0,102,0, 0, 0,60,0},
                          {0, 0,102,0, 0, 0,126,0}}; 
 
-const int question[4][8]={{28, 34,2,12, 8, 0,0,0},
+const int question[frames][8]={{28, 34,2,12, 8, 0,0,0},
+                         {28, 34,2,12, 8, 0,8,0},
+                         {28, 34,2,12, 8, 0,0,0},
                          {28, 34,2,12, 8, 0,8,0},
                          {28, 34,2,12, 8, 0,0,0},
                          {28, 34,2,12, 8, 0,8,0}};              
@@ -88,7 +103,7 @@ void setup() {
   lcd.begin(16,2);
   delay (500);
   lcd.createChar(0, Heart);
-  lcd.clear();
+  //lcd.clear();
   // Start the I2C Bus as Slave on address 9
   Wire.begin(9); 
   // Attach a function to trigger when something is received.
@@ -110,42 +125,48 @@ void receiveEvent(int bytes) {
 void loop() {
    //lcd.clear();
   if(event==1){
-    if(x[0]==LIGHTSOFF){
+   // Serial.println(x);
+    if((int)x[0]==LIGHTSOFF){
       lights=0;
       turn_off();
-    }else if(x[0]==LIGHTSON){ 
+    }else if((int)x[0]==LIGHTSON){ 
       lights=1;
       turn_on();
-    }else if(x[0]==SMILE||x[0]==SAD||x[0]==BORED||x[0]==QN){
-     // Serial.println((int)x[0]);
-      if(x[0] == SMILE){
-        animation_state = SMILE;
-      }else if(x[0] == SAD){
-       animation_state = SAD;
-      }else if(x[0] == BORED){
-       animation_state = BORED;
-      }else if(x[0]== QN){
-       animation_state = QN;
-      } 
+//    }else if((int)x[0]==SMILE||(int)x[0]==SAD||(int)x[0]==BORED||(int)x[0]==QN){
+//      Serial.println((int)x[0]);
+//      if((int)x[0] == SMILE){
+//        animation_state = SMILE;
+//      }else if((int)x[0] == SAD){
+//       animation_state = SAD;
+//      }else if((int)x[0] == BORED){
+//       animation_state = BORED;
+//      }else if((int)x[0]== QN){
+//       animation_state = QN;
+//      } 
     }else{
      //  Serial.println(x);
+     if(x!=LCD_message){
       x.toCharArray(lcd_message_buff, 33);
-      LCD_message = String(lcd_message_buff);
-       Serial.println(LCD_message);
+      animation_state = (int)lcd_message_buff[31];
+      if(lcd_message_buff[30]=='N'){
+        animation_state = QN;
+      }
+       local_LCD_display(lcd_message_buff);  
+     }
     }
-  }
-   if(lights){
-      local_LCD_display(LCD_message);
-      if(animation_state == SMILE){
-        animation(smile);
-      }else if(animation_state == SAD){
-       animation(sad);
-      }else if(animation_state == BORED){
-       animation(bored);
-      }else if(animation_state== QN){
-       animation(question);
-      } 
+ }
+  if(lights){
+    if(animation_state == SMILE){
+      animation(smile);
+    }else if(animation_state == SAD){
+     animation(sad);
+    }else if(animation_state == BORED){
+     animation(bored);
+    }else if(animation_state== QN){
+     animation(question);
+    } 
    }
+  
 //  if(lights){
 //    animation(smile);
 //   }
@@ -161,12 +182,15 @@ void turn_off(){
   digitalWrite(lcd_on, LOW);
 }
 
-void local_LCD_display(String message){
-   //lcd.clear(); 
-   
-   message.toCharArray(data, 33);
+void local_LCD_display(char data[32]){
+   lcd.clear(); 
+  // message.toCharArray(data, 33);
   // Serial.print(" inside lcd function ");
-   //Serial.println(data);
+   Serial.println(data);
+   data[31]=' ';
+   if(data[30]=='N'){
+    data[31]=')';
+   }
    int i;
     for(i=0;i<16;i++){
       lcd.setCursor(i,0);
@@ -183,20 +207,43 @@ void change_animation(String x){
 }
 
 void animation(const int movie[][columns]){
-  for(int j=0;j<frames;j++){
-    for(int k=0;k<300;k++){
-      for (int i=0; i<8; i++) {
-       shiftOut(DATA, SHIFT, LSBFIRST, ~movie[j][i]);
-       shiftOut(DATA, SHIFT, LSBFIRST, 128 >> i);
-       store();
-     }
+  int j=0;
+    //if ((unsigned long)(micros() - ANIMATION_prev_time >= 100)&& j<frames){
+      for(j=0;j<frames;j++){
+       for(int k=0;k<100;k++){
+          for (int i=0; i<8; i++) {
+           shiftOut(DATA, SHIFT, LSBFIRST, ~movie[j][i]);
+           shiftOut(DATA, SHIFT, LSBFIRST, 128 >> i);
+ //          store2();
+             if((unsigned long)(micros()-STORE_prev_time1) >= STORE_period){
+                  digitalWrite(STORE, HIGH);
+                STORE_prev_time1=micros();
+              }
+              if((unsigned long)(micros()-STORE_prev_time2) >= 2*STORE_period){
+                digitalWrite(STORE, LOW);
+                STORE_prev_time2=micros();
+              }
+         }
+    // j++;
+       // ANIMATION_prev_time = micros();
+        }
     } 
-  }
 }
-
-void store() {
+void store2() {
   digitalWrite(STORE, HIGH);
   delayMicroseconds(10);
   digitalWrite(STORE, LOW);
   delayMicroseconds(10);
+}
+
+void store() {
+  unsigned long current_time = micros();
+  if((unsigned long)(current_time-STORE_prev_time1) >= STORE_period){
+      digitalWrite(STORE, HIGH);
+    STORE_prev_time1=current_time;
+  }
+  if((unsigned long)(current_time-STORE_prev_time2) >= 2*STORE_period){
+    digitalWrite(STORE, LOW);
+    STORE_prev_time2=current_time;
+  }
 }
