@@ -107,8 +107,6 @@ int study_time_duration = 10; // Seconds
 int break_time_duration = 5; // Seconds
 
 // Animation variables
-int previous_animation;
-int current_animation;
  
 
 // Sensor/button trigger status
@@ -218,9 +216,9 @@ void action_manager(){
       cancel_cancel_message();
       go_to_standby();
     } else if (cancel_timer<0){
-      change_animation(previous_animation);
       cancel_cancel_message();
     } else {
+      LCD_overwrite=1;
       LCD_overwrite_message_bottom = ((String)cancel_timer + " s to confirm");
       LCD_print("","");
     }
@@ -238,6 +236,7 @@ void action_manager(){
     } else if (RTS_timer<0){
       cancel_RTS_message();      
     } else {
+      LCD_overwrite = 1;
       LCD_overwrite_message_top = get_day_and_time();
       LCD_overwrite_message_bottom = ("Study? L(Y):R(N)");
       LCD_print("","");
@@ -341,6 +340,7 @@ void cancel_cancel_message(){
 
 // Exit Ready to study message
 void cancel_RTS_message(){
+  animation_state = QN;
   reset_inputs();
   RTS_message = 0;
   LCD_overwrite = 0;
@@ -416,7 +416,7 @@ void update_current_timer_time(){
 
 // Start the timer!
 void start_timer(){
-  change_animation(SMILE);
+  animation_state = SMILE;
   state = IN_STUDY;
   reset_inputs();
   timer_start_time = millis();
@@ -458,8 +458,6 @@ void toggle_lights(int next_state){
 
 // Send a message to other arduino to change animation
 void change_animation(int animation){
-  previous_animation = current_animation;
-  current_animation = animation;
   Wire.beginTransmission(SLAVE);
   Wire.write(animation);
   Wire.endTransmission(SLAVE);
@@ -467,10 +465,10 @@ void change_animation(int animation){
 
 // Send a string to the other arduino to Display a message
 void LCD_print(String top_message, String bottom_message){
+  change_animation(animation_state);
   String top = format_string_for_print(top_message);
   String bottom = format_string_for_print(bottom_message);
   String full_message;
-
   if (LCD_overwrite){
     full_message = format_string_for_print(LCD_overwrite_message_top)+format_string_for_print(LCD_overwrite_message_bottom);
   } else {
@@ -482,8 +480,6 @@ void LCD_print(String top_message, String bottom_message){
     Wire.write(full_message[i]);
   }
   Wire.endTransmission(SLAVE);
-  delayMicroseconds(10);
-  change_animation(animation_state);
 }
 
 // Format a string to be exactly 16 characters by adding spaces

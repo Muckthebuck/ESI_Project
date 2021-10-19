@@ -44,6 +44,8 @@ const int question[4][8]={{28, 34,2,12, 8, 0,0,0},
                          {28, 34,2,12, 8, 0,8,0}};              
 
 const int LED = 13;
+char lcd_message_buff[32];
+String LCD_message = "";
 String x = "";
 char buff[16];
 int event;
@@ -103,7 +105,6 @@ void receiveEvent(int bytes) {
     x += (char)Wire.read(); // read from the I2C
   } 
   event=1;
- // Serial.println(x);
 }
 
 void loop() {
@@ -128,7 +129,13 @@ void loop() {
       } 
     }else{
      //  Serial.println(x);
-      local_LCD_display(x);
+      x.toCharArray(lcd_message_buff, 33);
+      LCD_message = String(lcd_message_buff);
+       Serial.println(LCD_message);
+    }
+  }
+   if(lights){
+      local_LCD_display(LCD_message);
       if(animation_state == SMILE){
         animation(smile);
       }else if(animation_state == SAD){
@@ -138,9 +145,7 @@ void loop() {
       }else if(animation_state== QN){
        animation(question);
       } 
-    }
-  }
-   
+   }
 //  if(lights){
 //    animation(smile);
 //   }
@@ -179,7 +184,7 @@ void change_animation(String x){
 
 void animation(const int movie[][columns]){
   for(int j=0;j<frames;j++){
-    for(int k=0;k<500;k++){
+    for(int k=0;k<300;k++){
       for (int i=0; i<8; i++) {
        shiftOut(DATA, SHIFT, LSBFIRST, ~movie[j][i]);
        shiftOut(DATA, SHIFT, LSBFIRST, 128 >> i);
