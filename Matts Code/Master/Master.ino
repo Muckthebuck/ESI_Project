@@ -61,7 +61,7 @@ int StepsRequired;
 // Connected to ULN2003 Motor Driver In1, In2, In3, In4 
 // Pins entered in sequence 1-3-2-4 for proper step sequencing
  
-//Stepper steppermotor(STEPS_PER_REV, 8, 10, 9, 11);
+Stepper steppermotor(STEPS_PER_REV, 8, 10, 9, 11);
 
 ///////////////////////////////////////// VARIABLES //////////////////////////////////////////
 
@@ -120,6 +120,7 @@ bool enough_light = 0;
 bool PIR = 0;
 char data[32];
 int light_state = 1;
+int stepper_state=0;
 // Messages
 const int random_string_limit = 10;
 int random_string_timer = 0;
@@ -178,6 +179,7 @@ void setup() {
 void loop() {
   check_inputs();
   action_manager();
+  //rotate_motor
 }
 
 void check_inputs() {
@@ -210,6 +212,9 @@ void action_manager(){
     return;
   } else {
    toggle_lights(1);
+    StepsRequired  =  -STEPS_PER_OUT_REV / 2;
+    steppermotor.setSpeed(800);   
+    steppermotor.step(StepsRequired);
   }
 
   // Update time on RTC
@@ -444,7 +449,6 @@ void reset_inputs(){
   PIR=0;
   left_btn=0;
   right_btn=0;
-  third_btn=0;
 }
 
 // How we detect movement

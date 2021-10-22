@@ -135,17 +135,6 @@ void loop() {
     }else if((int)x[0]==LIGHTSON){ 
       lights=1;
       turn_on();
-//    }else if((int)x[0]==SMILE||(int)x[0]==SAD||(int)x[0]==BORED||(int)x[0]==QN){
-//      Serial.println((int)x[0]);
-//      if((int)x[0] == SMILE){
-//        animation_state = SMILE;
-//      }else if((int)x[0] == SAD){
-//       animation_state = SAD;
-//      }else if((int)x[0] == BORED){
-//       animation_state = BORED;
-//      }else if((int)x[0]== QN){
-//       animation_state = QN;
-//      } 
     }else{
      //  Serial.println(x);
      if(x!=LCD_message){
@@ -172,13 +161,7 @@ void loop() {
     }else if(animation_state== QN){
      animation(question);
     } 
-   }
-  
-//  if(lights){
-//    animation(smile);
-//   }
- // delay(1000);
- // lcd.clear(); 
+   } 
 }
 
 void turn_on(){
@@ -210,9 +193,6 @@ void local_LCD_display(char data[32]){
     }
 }
 
-void change_animation(String x){
-  
-}
 
 void animation(const int movie[][columns]){
   int j=0;
@@ -222,7 +202,6 @@ void animation(const int movie[][columns]){
           for (int i=0; i<8; i++) {
            shiftOut(DATA, SHIFT, LSBFIRST, ~movie[j][i]);
            shiftOut(DATA, SHIFT, LSBFIRST, 128 >> i);
- //          store2();
              if((unsigned long)(micros()-STORE_prev_time1) >= STORE_period){
                   digitalWrite(STORE, HIGH);
                 STORE_prev_time1=micros();
@@ -232,26 +211,8 @@ void animation(const int movie[][columns]){
                 STORE_prev_time2=micros();
               }
          }
-    // j++;
-       // ANIMATION_prev_time = micros();
         }
     } 
 }
-void store2() {
-  digitalWrite(STORE, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(STORE, LOW);
-  delayMicroseconds(10);
-}
 
-void store() {
-  unsigned long current_time = micros();
-  if((unsigned long)(current_time-STORE_prev_time1) >= STORE_period){
-      digitalWrite(STORE, HIGH);
-    STORE_prev_time1=current_time;
-  }
-  if((unsigned long)(current_time-STORE_prev_time2) >= 2*STORE_period){
-    digitalWrite(STORE, LOW);
-    STORE_prev_time2=current_time;
-  }
 }
