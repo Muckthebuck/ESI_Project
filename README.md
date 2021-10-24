@@ -1,3 +1,10 @@
+# Study Buddy
+
+By:\
+Mukul Chodhary  - 1172562\
+Matthew Webb    - 1234019\
+Mustafa Behrami - 1153524
+
 
 
 ### Physical implementation and 3D design
@@ -13,8 +20,3 @@ More technical viewers might be interested in why we need two Arduinos, and what
 The master Arduino is connected to all of sensors which are motion sensor (PIR) to detect when user is nearby, Photoresistor (to detect when lights are off),  two user buttons to get input from user, an active buzzer to alert user when timer has ended, and stepper motor for the rotating figure. 
 The slave Arduino is responsible for displaying messages to both displays. 16 by 2 LCD screen requires 8 pins to go directly to Arduino and the rest 4 are some combination of VCC and GND pins. But this was still too many pins, as 8by8 led matrix required 16 pins to connect. To reduce number of pins we cascaded 2 8 bit shift registers and created a 16 bit shift register. This meant we can manipulate 16 pins input to 8 by 8 using only 3 input pins of a shift register. This made our task somewhat manageable. However, the original pins from 8by8 led module were not nicely sorted into rows and columns, so additional wire rerouting had to be done. The driver circuit was built on a breadboard for this project. 
 
-
-By
-Mukul
-Matthew
-Mustafa Behrami - 1153524
