@@ -5,6 +5,10 @@ Mukul Chodhary  - 1172562\
 Matthew Webb    - 1234019\
 Mustafa Behrami - 1153524
 
+# VIDEO
+
+[VIDEO](ESI_Project/tree/master/WED_09-00_G2_VID.mov)
+
 ## Motive
 The study buddy is a smart timer that we created to tackle lockdown studying issues such as phubbing and procrastination. Especially now with the onset of Netflix's newest series Squid Game and new seasons of Lucifer and You, our time management abilities are struggling to cope with the plethora of stimuli being thrown at our brains.
 
