@@ -39,29 +39,29 @@ Buzzer buzzer(ACTIVE_BUZZ_PIN);
 
 // Arduino Communication
 #define SLAVE 9
-
-//stepper motor
-// Number of steps per internal motor revolution 
-const float STEPS_PER_REV = 32; 
- 
-//  Amount of Gear Reduction
-const float GEAR_RED = 64;
- 
-// Number of steps per geared output rotation
-const float STEPS_PER_OUT_REV = STEPS_PER_REV * GEAR_RED;
- 
-// Define Variables
- 
-// Number of Steps Required
-int StepsRequired;
- 
-// Create Instance of Stepper Class
-// Specify Pins used for motor coils
-// The pins used are 8,9,10,11 
-// Connected to ULN2003 Motor Driver In1, In2, In3, In4 
-// Pins entered in sequence 1-3-2-4 for proper step sequencing
- 
-Stepper steppermotor(STEPS_PER_REV, 8, 10, 9, 11);
+//
+////stepper motor
+//// Number of steps per internal motor revolution 
+//const float STEPS_PER_REV = 32; 
+// 
+////  Amount of Gear Reduction
+//const float GEAR_RED = 64;
+// 
+//// Number of steps per geared output rotation
+//const float STEPS_PER_OUT_REV = STEPS_PER_REV * GEAR_RED;
+// 
+//// Define Variables
+// 
+//// Number of Steps Required
+//int StepsRequired;
+// 
+//// Create Instance of Stepper Class
+//// Specify Pins used for motor coils
+//// The pins used are 8,9,10,11 
+//// Connected to ULN2003 Motor Driver In1, In2, In3, In4 
+//// Pins entered in sequence 1-3-2-4 for proper step sequencing
+// 
+//Stepper steppermotor(STEPS_PER_REV, 8, 10, 9, 11);
 
 ///////////////////////////////////////// VARIABLES //////////////////////////////////////////
 
@@ -164,7 +164,7 @@ void setup() {
   // Begin Arduino Communication
   Wire.begin();
   //sec,min,hour,dayoftheweek,month,day,year
-  //myRTC.setDS1302Time(00,31,11,3,10,19,2021);
+  myRTC.setDS1302Time(00,31,15,6,10,19,2021);
   pinMode(PIR_PIN, INPUT);
   pinMode(PHOTO_PIN, INPUT);
   pinMode(ACTIVE_BUZZ_PIN, OUTPUT);
@@ -212,9 +212,9 @@ void action_manager(){
     return;
   } else {
    toggle_lights(1);
-    StepsRequired  =  -STEPS_PER_OUT_REV / 2;
-    steppermotor.setSpeed(800);   
-    steppermotor.step(StepsRequired);
+//    StepsRequired  =  -STEPS_PER_OUT_REV / 2;
+//    steppermotor.setSpeed(800);   
+//    steppermotor.step(StepsRequired);
   }
 
   // Update time on RTC
